@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>میزاری آنلاین | مسافر</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></head>
+<body><main>
+<div class="header"><h2>🚕 میزاری آنلاین</h2><button onclick="logout()">خروج</button></div>
+<div class="card"><h3>درخواست سفر</h3>
+<input id="origin" placeholder="📍 مبدا">
+<input id="destination" placeholder="🏁 مقصد">
+<div id="map" style="height:320px;border-radius:14px;margin:10px 0"></div><input id="distance" type="number" min="0" step=".1" placeholder="مسافت (کیلومتر)"><input id="duration" type="number" min="0" placeholder="زمان تقریبی (دقیقه)">
+<select id="payment"><option value="cash">💵 نقدی</option><option value="wallet">💳 کیف پول</option></select>
+<button onclick="requestRide()">درخواست موتر</button><p id="msg"></p></div>
+<div class="card"><h3>وضعیت سفر جاری</h3><div id="active">سفری ندارید.</div></div>
+<div class="card"><h3>تاریخچه</h3><div id="history">...</div></div>
+<div class="card"><h3>پشتیبانی</h3><textarea id="complaint" placeholder="مشکل خود را بنویسید"></textarea><button onclick="sendComplaint()">ارسال</button></div>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="config.js"></script><script src="api.js"></script><script src="realtime.js"></script><script src="map.js"></script>
+<script>
+if(!API.token()) location.href="login.html"; window.addEventListener("load",()=>MIZARI_MAP.init());
+const $=id=>document.getElementById(id);
+let current=null;
+async function requestRide(){
+ try{
+  const d=await API.call("/rides",{method:"POST",body:JSON.stringify({
+   originText:$("origin").value,destinationText:$("destination").value,
+   distanceKm:Number($("distance").value||0),durationMin:Number($("duration").value||0),paymentMethod:$("payment").value
+  })});
+  current=d.ride; renderCurrent(); load();
+ }catch(e){$("msg").textContent=e.message}
+}
+function renderCurrent(){
+ if(!current){$("active").textContent="سفری ندارید.";return}
+ $("active").innerHTML=`<div class="status"><b>سفر #${current.id}</b><br>${current.origin_text} ← ${current.destination_text}<br>وضعیت: ${current.status}<br>کرایه: ${Math.round(current.fare)} افغانی</div>`;
+}
+async function load(){
+ try{
+  const d=await API.rides();
+  $("history").innerHTML=d.rides.map(r=>`<div class="status">#${r.id} | ${r.status} | ${Math.round(r.fare)} افغانی<br>${r.origin_text} ← ${r.destination_text}</div>`).join("")||"سابقه‌ای ندارید";
+  if(current){const x=await API.call("/rides/"+current.id);current=x.ride;renderCurrent()}
+ }catch(e){}
+}
+async function sendComplaint(){
+ try{await API.call("/complaints",{method:"POST",body:JSON.stringify({category:"support",message:$("complaint").value})});$("complaint").value="";alert("درخواست ثبت شد")}catch(e){alert(e.message)}
+}
+function logout(){localStorage.removeItem("mizari_token");location.href="login.html"}
+load();enableRealtime();enablePush();setInterval(load,5000);
+</script><script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body></html>

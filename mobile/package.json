@@ -1,0 +1,16 @@
+{
+  "name": "mizari-online-mobile-shells",
+  "private": true,
+  "version": "7.0.0",
+  "scripts": {
+    "build:passenger": "node scripts/prepare.js passenger",
+    "build:driver": "node scripts/prepare.js driver",
+    "build:admin": "node scripts/prepare.js admin",
+    "check": "node ../scripts/check-project.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
+  }
+}

@@ -1,0 +1,1 @@
+require("dotenv").config();const db=require("./db");const p=process.env.ADMIN_PHONE||"0700000000";if(!db.prepare("SELECT id FROM users WHERE phone=?").get(p))db.prepare("INSERT INTO users(phone,role,name) VALUES(?,'admin','مدیر میزاری')").run(p);console.log("Admin ready:",p);

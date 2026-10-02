@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>میزاری آنلاین | راننده</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.webmanifest"></head>
+<body><main>
+<div class="header"><h2>🚗 اپ راننده</h2><button onclick="logout()">خروج</button></div>
+<div class="card"><h3>وضعیت راننده</h3><div id="state">...</div>
+<button onclick="setOnline(true)">🟢 آنلاین</button>
+<button class="danger" onclick="setOnline(false)">🔴 آفلاین</button></div>
+<div class="card"><h3>ثبت خودرو</h3>
+<input id="model" placeholder="مدل خودرو"><input id="color" placeholder="رنگ خودرو"><input id="plate" placeholder="پلاک">
+<button onclick="register()">ثبت مشخصات</button><p id="regmsg"></p></div>
+<div class="card"><h3>درخواست‌های موجود</h3><div id="requests">...</div></div>
+<div class="card"><h3>سفر فعال</h3><div id="active">سفری نیست.</div></div>
+<div class="card"><h3>درآمد</h3><b id="earn">...</b> افغانی</div>
+</main>
+<script src="config.js"></script><script src="api.js"></script><script src="realtime.js"></script>
+<script>
+if(!API.token())location.href="login.html";
+let meData=null, activeId=null;
+const $=id=>document.getElementById(id);
+async function me(){try{let x=await API.me();meData=x.driver;$("state").textContent=meData?`تأیید: ${meData.verified?"بله":"در انتظار"} | ${meData.online?"آنلاین":"آفلاین"}`:"خودرو ثبت نشده";}catch(e){}}
+async function register(){try{await API.call("/drivers/register",{method:"POST",body:JSON.stringify({vehicleModel:$("model").value,vehicleColor:$("color").value,plate:$("plate").value})});$("regmsg").textContent="ثبت شد؛ منتظر تأیید ادمین باشید.";me()}catch(e){$("regmsg").textContent=e.message}}
+async function setOnline(on){try{
+ navigator.geolocation.getCurrentPosition(async p=>{await API.call("/drivers/status",{method:"POST",body:JSON.stringify({online:on,lat:p.coords.latitude,lng:p.coords.longitude})});me();load()},
+ async()=>{await API.call("/drivers/status",{method:"POST",body:JSON.stringify({online:on})});me()});
+}catch(e){alert(e.message)}}
+async function load(){try{
+ let x=await API.rides();
+ const waiting=x.rides.filter(r=>r.status==="searching");
+ $("requests").innerHTML=waiting.map(r=>`<div class="status">#${r.id}<br>${r.origin_text} ← ${r.destination_text}<br>${Math.round(r.fare)} افغانی<br><button onclick="accept(${r.id})">قبول سفر</button></div>`).join("")||"درخواستی نیست";
+ const active=x.rides.find(r=>["driver_assigned","driver_arrived","trip_started"].includes(r.status));
+ activeId=active?.id||null;
+ $("active").innerHTML=active?`<div class="status">#${active.id}<br>وضعیت: ${active.status}<br>
+ ${active.status==="driver_assigned"?'<button onclick="statusRide(\'driver_arrived\')">به مسافر رسیدم</button>':''}
+ ${active.status==="driver_arrived"?'<button onclick="statusRide(\'trip_started\')">شروع سفر</button>':''}
+ ${active.status==="trip_started"?'<button onclick="statusRide(\'completed\')">پایان سفر</button>':''}</div>`:"سفری نیست.";
+ const e=await API.call("/drivers/earnings");$("earn").textContent=Math.round(e.earnings||0);
+ }catch(e){}}
+async function accept(id){try{await API.call("/rides/"+id+"/accept",{method:"POST"});load()}catch(e){alert(e.message)}}
+async function statusRide(status){if(!activeId)return;try{await API.call("/rides/"+activeId+"/status",{method:"POST",body:JSON.stringify({status})});load()}catch(e){alert(e.message)}}
+function logout(){localStorage.removeItem("mizari_token");location.href="login.html"}
+me();load();enableRealtime();enablePush();setInterval(()=>{me();load()},5000);
+</script><script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body></html>

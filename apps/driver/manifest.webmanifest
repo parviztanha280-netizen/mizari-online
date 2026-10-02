@@ -1,0 +1,11 @@
+{
+  "name": "میزاری آنلاین - driver",
+  "short_name": "میزاری",
+  "start_url": "./login.html",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "fa",
+  "theme_color": "#0b6b4b",
+  "background_color": "#ffffff",
+  "icons": []
+}

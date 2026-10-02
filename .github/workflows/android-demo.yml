@@ -1,0 +1,37 @@
+name: Build 3 demo Android APKs
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [passenger, driver, admin]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package.json
+      - uses: android-actions/setup-android@v3
+      - run: npm install --prefix mobile --no-audit --no-fund
+      - run: node mobile/scripts/prepare.js ${{ matrix.app }}
+        env:
+          MIZARI_API_URL: ''
+      - run: |
+          cd mobile
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+      - name: Build debug APK
+        run: |
+          cd mobile/android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mizari-${{ matrix.app }}-demo-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
