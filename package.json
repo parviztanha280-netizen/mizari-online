@@ -1,0 +1,8 @@
+{
+  "name": "mizari-online",
+  "private": true,
+  "version": "7.0.0",
+  "scripts": {
+    "check": "node scripts/check-project.js"
+  }
+}
