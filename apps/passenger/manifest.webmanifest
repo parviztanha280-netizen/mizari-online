@@ -1,7 +1,8 @@
 {
-  "name": "میزاری آنلاین - passenger",
+  "name": "میزاری آنلاین - مسافر",
   "short_name": "میزاری",
   "start_url": "./login.html",
+  "scope": "./",
   "display": "standalone",
   "dir": "rtl",
   "lang": "fa",
