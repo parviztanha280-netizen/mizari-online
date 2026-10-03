@@ -1,1 +1,104 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>میزاری آنلاین</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.webmanifest"></head><body><main class="login-page"><div class="logo">🚕</div><h1>میزاری آنلاین</h1><p>راهت، همین‌جا شروع میشه</p><div class="login-box"><label>شماره موبایل افغانستان</label><input id="phone" placeholder="07XXXXXXXX" maxlength="10"><button id="send">دریافت کد</button><div id="otpbox" class="hidden"><label>کد OTP</label><input id="otp" inputmode="numeric" maxlength="6" placeholder="123456"><button id="login">ورود</button></div><p id="msg"></p></div></main><script src="config.js"></script><script src="api.js"></script><script>const $=x=>document.getElementById(x);$("send").onclick=async()=>{try{let d=await API.otp($("phone").value.trim());$("otpbox").classList.remove("hidden");$("msg").textContent=d.demoCode?"کد آزمایشی: "+d.demoCode:"کد ارسال شد"}catch(e){$("msg").textContent=e.message}};$("login").onclick=async()=>{try{let d=await API.verify($("phone").value.trim(),$("otp").value.trim());localStorage.setItem("mizari_token",d.token);location.href="index.html"}catch(e){$("msg").textContent=e.message}};</script><script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body></html>
+```html
+<!doctype html>
+<html lang="fa" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>میزاری آنلاین | ورود</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- config باید قبل از api.js باشد -->
+  <script src="config.js"></script>
+</head>
+
+<body>
+
+  <main>
+
+    <div class="card">
+      <h2>🚕 میزاری آنلاین</h2>
+      <h3>ورود به حساب</h3>
+
+      <form id="loginForm">
+
+        <label for="phone">شماره تلفن</label>
+        <input
+          id="phone"
+          type="tel"
+          placeholder="شماره تلفن"
+          autocomplete="tel"
+          required
+        >
+
+        <label for="password">رمز عبور</label>
+        <input
+          id="password"
+          type="password"
+          placeholder="رمز عبور"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit" id="loginBtn">
+          ورود
+        </button>
+
+      </form>
+
+      <div id="message"></div>
+    </div>
+
+  </main>
+
+  <script src="api.js"></script>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const phone = document.getElementById("phone");
+    const password = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      message.textContent = "";
+      loginBtn.disabled = true;
+      loginBtn.textContent = "در حال ورود...";
+
+      try {
+
+        const result = await API.call("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({
+            phone: phone.value.trim(),
+            password: password.value
+          })
+        });
+
+        if (result.token) {
+          localStorage.setItem("mizari_token", result.token);
+        }
+
+        location.href = "index.html";
+
+      } catch (e) {
+
+        message.textContent =
+          e.message || "ورود ناموفق بود.";
+
+      } finally {
+
+        loginBtn.disabled = false;
+        loginBtn.textContent = "ورود";
+
+      }
+    });
+  </script>
+
+</body>
+</html>
+```
