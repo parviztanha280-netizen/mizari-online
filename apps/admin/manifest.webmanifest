@@ -1,14 +1,12 @@
-```json
 {
-  "name": "میزاری آنلاین",
-  "short_name": "میزاری",
-  "description": "سامانه میزاری آنلاین",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "orientation": "portrait",
-  "lang": "fa",
-  "dir": "rtl",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff"
+"name": "میزاری آنلاین",
+"short_name": "میزاری",
+"description": "سامانه میزاری آنلاین",
+"start_url": "./index.html",
+"display": "standalone",
+"orientation": "portrait",
+"lang": "fa",
+"dir": "rtl",
+"background_color": "#ffffff",
+"theme_color": "#ffffff"
 }
-```
