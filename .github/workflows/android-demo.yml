@@ -1,3 +1,4 @@
+
 name: Build 3 demo Android APKs
 
 on:
@@ -18,7 +19,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - uses: android-actions/setup-android@v4
         with:
