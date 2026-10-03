@@ -29,9 +29,8 @@ jobs:
 
       - name: Install mobile dependencies
         run: npm install --prefix mobile --no-audit --no-fund
-
-      - name: Prepare app
-        run: node mobile/scripts/prepare.js
+- name: Prepare app
+  run: node mobile/scripts/prepare.js ${{ matrix.app }}
         env:
           MIZARI_API_URL: ''
 
