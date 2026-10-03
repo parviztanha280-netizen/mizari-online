@@ -29,6 +29,9 @@ jobs:
       - name: Install mobile dependencies
         run: npm install --prefix mobile
 
+      - name: Install TypeScript
+        run: npm install --prefix mobile --save-dev typescript
+
       - name: Prepare app
         run: node mobile/scripts/prepare.js ${{ matrix.app }}
         env:
@@ -52,7 +55,3 @@ jobs:
         with:
           name: ${{ matrix.app }}-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Post Setup Node.js
-        if: always()
-        run: echo "Build finished for ${{ matrix.app }}"
