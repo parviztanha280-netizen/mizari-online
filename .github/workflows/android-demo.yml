@@ -1,15 +1,4 @@
 name: Build 3 demo Android APKs
-on:
-  workflow_dispatch:
-jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [passenger, driver, admin]
-    runs-on: ubuntu-latest
-    steps:
-      - usename: Build 3 demo Android APKs
 
 on:
   workflow_dispatch:
