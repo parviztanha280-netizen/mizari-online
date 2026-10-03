@@ -29,8 +29,8 @@ jobs:
       - name: Install mobile dependencies
         run: npm install --prefix mobile
 
-      - name: Install TypeScript
-        run: npm install --prefix mobile --save-dev typescript
+      - name: Install compatible TypeScript
+        run: npm install --prefix mobile --save-dev typescript@5.9.3
 
       - name: Prepare app
         run: node mobile/scripts/prepare.js ${{ matrix.app }}
