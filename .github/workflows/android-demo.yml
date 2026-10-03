@@ -16,7 +16,7 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package.json
       - uses: android-actions/setup-android@v4
-  with:
+        with:
     packages: 'platform-tools'
       - run: npm install --prefix mobile --no-audit --no-fund
       - run: node mobile/scripts/prepare.js ${{ matrix.app }}
