@@ -18,6 +18,8 @@ jobs:
       - uses: android-actions/setup-android@v4
   with:
     packages: 'platform-tools'
+  with:
+    packages: 'platform-tools'
       - run: npm install --prefix mobile --no-audit --no-fund
       - run: node mobile/scripts/prepare.js ${{ matrix.app }}
         env:
