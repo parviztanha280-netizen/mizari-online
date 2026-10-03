@@ -14,23 +14,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - uses: android-actions/setup-android@v4
+      - name: Setup Android
+        uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
 
-      - run: npm install --prefix mobile --no-audit --no-fund
+      - name: Install mobile dependencies
+        run: npm install --prefix mobile --no-audit --no-fund
 
-      - run: node mobile/scripts/prepare.js
+      - name: Prepare app
+        run: node mobile/scripts/prepare.js
         env:
           MIZARI_API_URL: ''
 
-      - run: |
+      - name: Create Android project
+        run: |
           cd mobile
           rm -rf android
           npx cap add android
@@ -42,7 +48,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: mizari-${{ matrix.app }}-demo-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
