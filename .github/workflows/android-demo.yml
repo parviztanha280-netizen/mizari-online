@@ -1,5 +1,4 @@
-
-name: Build 3 demo Android APKs
+name: Build Android APK
 
 on:
   workflow_dispatch:
@@ -23,14 +22,15 @@ jobs:
           node-version: 20
 
       - name: Setup Android
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
 
       - name: Install mobile dependencies
-        run: npm install --prefix mobile --no-audit --no-fund
-- name: Prepare app
-  run: node mobile/scripts/prepare.js ${{ matrix.app }}
+        run: npm install --prefix mobile
+
+      - name: Prepare app
+        run: node mobile/scripts/prepare.js ${{ matrix.app }}
         env:
           MIZARI_API_URL: ''
 
@@ -45,11 +45,14 @@ jobs:
         run: |
           cd mobile/android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: mizari-${{ matrix.app }}-demo-apk
+          name: ${{ matrix.app }}-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+
+      - name: Post Setup Node.js
+        if: always()
+        run: echo "Build finished for ${{ matrix.app }}"
