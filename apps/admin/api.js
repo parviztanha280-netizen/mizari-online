@@ -1,28 +1,531 @@
-const DEMO_KEY='mizari_demo_state_v1';
-function demoState(){try{return JSON.parse(localStorage.getItem(DEMO_KEY)||'null')||{users:0,rides:[],nextRide:1,driver:{online:false,verified:true},complaints:[],earnings:0}}catch{return {users:0,rides:[],nextRide:1,driver:{online:false,verified:true},complaints:[],earnings:0}}}
-function saveDemo(s){localStorage.setItem(DEMO_KEY,JSON.stringify(s));}
-function demoUser(){const role=window.MIZARI_ROLE||'passenger'; return {id:1,role,phone:localStorage.getItem('mizari_demo_phone')||'0700000000',name:role==='admin'?'مدیر میزاری':role==='driver'?'راننده آزمایشی':'مسافر آزمایشی'};}
-async function demoCall(path,opt={}){
- const s=demoState(), method=(opt.method||'GET').toUpperCase(), body=opt.body?JSON.parse(opt.body):{};
- if(path==='/me') return {user:demoUser()};
- if(path==='/rides' && method==='GET') return {rides:s.rides};
- if(path==='/rides' && method==='POST'){const d={id:s.nextRide++,origin_text:body.originText||'مبدا آزمایشی',destination_text:body.destinationText||'مقصد آزمایشی',distance_km:Number(body.distanceKm||5),duration_min:Number(body.durationMin||15),fare:Math.round(50+Number(body.distanceKm||5)*20),payment_method:body.paymentMethod||'cash',status:'searching',created_at:new Date().toISOString()};s.rides.unshift(d);saveDemo(s);return {ride:d};}
- const rm=path.match(/^\/rides\/(\d+)$/); if(rm&&method==='GET'){const r=s.rides.find(x=>x.id==rm[1]);return {ride:r||null};}
- const acc=path.match(/^\/rides\/(\d+)\/accept$/); if(acc&&method==='POST'){const r=s.rides.find(x=>x.id==acc[1]);if(!r)throw Error('سفر پیدا نشد');r.status='driver_assigned';saveDemo(s);return {ride:r};}
- const st=path.match(/^\/rides\/(\d+)\/status$/); if(st&&method==='POST'){const r=s.rides.find(x=>x.id==st[1]);if(!r)throw Error('سفر پیدا نشد');r.status=body.status||r.status;if(r.status==='completed')s.earnings+=r.fare;saveDemo(s);return {ride:r};}
- if(path==='/drivers/status'&&method==='POST'){s.driver.online=!!body.online;saveDemo(s);return {driver:s.driver};}
- if(path==='/drivers/earnings')return {earnings:s.earnings};
- if(path==='/admin/stats')return {users:1,drivers:1,onlineDrivers:s.driver.online?1:0,rides:s.rides.length,activeRides:s.rides.filter(r=>r.status!=='completed').length,complaints:s.complaints.length};
- if(path==='/admin/drivers')return {drivers:[{id:1,phone:'0700000000',vehicle_model:'Toyota Corolla',plate:'DEMO-001',verified:true}]};
- if(path==='/admin/complaints')return {complaints:s.complaints};
- const vr=path.match(/^\/drivers\/verify\/\d+$/); if(vr&&method==='POST')return {ok:true};
- if(path==='/complaints'&&method==='POST'){s.complaints.unshift({id:s.complaints.length+1,category:body.category||'support',message:body.message||''});saveDemo(s);return {ok:true};}
- return {};
+```js
+const DEMO_KEY = "mizari_demo_state_v1";
+
+function demoState() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(DEMO_KEY) || "null"
+    ) || {
+      users: 0,
+      rides: [],
+      nextRide: 1,
+      driver: {
+        online: false,
+        verified: true
+      },
+      complaints: [],
+      earnings: 0
+    };
+  } catch {
+    return {
+      users: 0,
+      rides: [],
+      nextRide: 1,
+      driver: {
+        online: false,
+        verified: true
+      },
+      complaints: [],
+      earnings: 0
+    };
+  }
 }
-const API={
- token:()=>localStorage.getItem('mizari_token'),
- async call(path,opt={}){if(!window.MIZARI_API)return demoCall(path,opt);let h={'Content-Type':'application/json',...(opt.headers||{})};if(this.token())h.Authorization='Bearer '+this.token();let r=await fetch(window.MIZARI_API+path,{...opt,headers:h}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'خطای سرور');return d},
- async otp(p){if(!window.MIZARI_API){localStorage.setItem('mizari_demo_phone',p);return {demoCode:'123456'}}return this.call('/auth/request-otp',{method:'POST',body:JSON.stringify({phone:p})})},
- async verify(p,c){if(!window.MIZARI_API){if(c!=='123456')throw Error('کد آزمایشی: 123456');localStorage.setItem('mizari_demo_phone',p);localStorage.setItem('mizari_token','demo-token');return {token:'demo-token',user:demoUser()}}return this.call('/auth/verify-otp',{method:'POST',body:JSON.stringify({phone:p,code:c})})},
- me:()=>API.call('/me'),rides:()=>API.call('/rides')
+
+function saveDemo(state) {
+  localStorage.setItem(
+    DEMO_KEY,
+    JSON.stringify(state)
+  );
+}
+
+function demoUser() {
+  const role = window.MIZARI_ROLE || "passenger";
+
+  return {
+    id: 1,
+    role,
+    phone:
+      localStorage.getItem("mizari_demo_phone") ||
+      "0700000000",
+    name:
+      role === "admin"
+        ? "مدیر میزاری"
+        : role === "driver"
+          ? "راننده آزمایشی"
+          : "مسافر آزمایشی"
+  };
+}
+
+async function demoCall(path, opt = {}) {
+  const state = demoState();
+
+  const method =
+    (opt.method || "GET").toUpperCase();
+
+  let body = {};
+
+  try {
+    body = opt.body
+      ? JSON.parse(opt.body)
+      : {};
+  } catch {
+    body = {};
+  }
+
+  /* کاربر فعلی */
+  if (path === "/me") {
+    return {
+      user: demoUser()
+    };
+  }
+
+  /* لیست سفرها */
+  if (
+    path === "/rides" &&
+    method === "GET"
+  ) {
+    return {
+      rides: state.rides
+    };
+  }
+
+  /* ایجاد سفر */
+  if (
+    path === "/rides" &&
+    method === "POST"
+  ) {
+    const distance = Number(
+      body.distanceKm || 5
+    );
+
+    const ride = {
+      id: state.nextRide++,
+
+      origin_text:
+        body.originText ||
+        "مبدا آزمایشی",
+
+      destination_text:
+        body.destinationText ||
+        "مقصد آزمایشی",
+
+      distance_km: distance,
+
+      duration_min:
+        Number(body.durationMin || 15),
+
+      fare:
+        Math.round(50 + distance * 20),
+
+      payment_method:
+        body.paymentMethod || "cash",
+
+      status: "searching",
+
+      created_at:
+        new Date().toISOString()
+    };
+
+    state.rides.unshift(ride);
+
+    saveDemo(state);
+
+    return {
+      ride
+    };
+  }
+
+  /* مشاهده یک سفر */
+  const rideMatch =
+    path.match(/^\/rides\/(\d+)$/);
+
+  if (
+    rideMatch &&
+    method === "GET"
+  ) {
+    const ride =
+      state.rides.find(
+        x => x.id == rideMatch[1]
+      );
+
+    return {
+      ride: ride || null
+    };
+  }
+
+  /* قبول سفر */
+  const acceptMatch =
+    path.match(/^\/rides\/(\d+)\/accept$/);
+
+  if (
+    acceptMatch &&
+    method === "POST"
+  ) {
+    const ride =
+      state.rides.find(
+        x => x.id == acceptMatch[1]
+      );
+
+    if (!ride) {
+      throw new Error(
+        "سفر پیدا نشد"
+      );
+    }
+
+    ride.status =
+      "driver_assigned";
+
+    saveDemo(state);
+
+    return {
+      ride
+    };
+  }
+
+  /* تغییر وضعیت سفر */
+  const statusMatch =
+    path.match(/^\/rides\/(\d+)\/status$/);
+
+  if (
+    statusMatch &&
+    method === "POST"
+  ) {
+    const ride =
+      state.rides.find(
+        x => x.id == statusMatch[1]
+      );
+
+    if (!ride) {
+      throw new Error(
+        "سفر پیدا نشد"
+      );
+    }
+
+    ride.status =
+      body.status || ride.status;
+
+    if (
+      ride.status === "completed" &&
+      !ride._paid
+    ) {
+      state.earnings +=
+        Number(ride.fare || 0);
+
+      ride._paid = true;
+    }
+
+    saveDemo(state);
+
+    return {
+      ride
+    };
+  }
+
+  /* وضعیت راننده */
+  if (
+    path === "/drivers/status" &&
+    method === "POST"
+  ) {
+    state.driver.online =
+      !!body.online;
+
+    saveDemo(state);
+
+    return {
+      driver: state.driver
+    };
+  }
+
+  /* درآمد راننده */
+  if (
+    path === "/drivers/earnings"
+  ) {
+    return {
+      earnings: state.earnings
+    };
+  }
+
+  /* آمار مدیریت */
+  if (
+    path === "/admin/stats"
+  ) {
+    return {
+      users: 1,
+      drivers: 1,
+
+      onlineDrivers:
+        state.driver.online
+          ? 1
+          : 0,
+
+      rides:
+        state.rides.length,
+
+      activeRides:
+        state.rides.filter(
+          r =>
+            r.status !==
+            "completed"
+        ).length,
+
+      complaints:
+        state.complaints.length
+    };
+  }
+
+  /* رانندگان مدیریت */
+  if (
+    path === "/admin/drivers"
+  ) {
+    return {
+      drivers: [
+        {
+          id: 1,
+          phone: "0700000000",
+          vehicle_model:
+            "Toyota Corolla",
+          plate: "DEMO-001",
+          verified: true
+        }
+      ]
+    };
+  }
+
+  /* شکایت‌های مدیریت */
+  if (
+    path === "/admin/complaints"
+  ) {
+    return {
+      complaints:
+        state.complaints
+    };
+  }
+
+  /* تأیید راننده */
+  const verifyMatch =
+    path.match(
+      /^\/drivers\/verify\/\d+$/
+    );
+
+  if (
+    verifyMatch &&
+    method === "POST"
+  ) {
+    return {
+      ok: true
+    };
+  }
+
+  /* ثبت شکایت */
+  if (
+    path === "/complaints" &&
+    method === "POST"
+  ) {
+    state.complaints.unshift({
+      id:
+        state.complaints.length + 1,
+
+      category:
+        body.category ||
+        "support",
+
+      message:
+        body.message || ""
+    });
+
+    saveDemo(state);
+
+    return {
+      ok: true
+    };
+  }
+
+  return {};
+}
+
+
+/* =========================
+   API
+========================= */
+
+const API = {
+
+  token() {
+    return localStorage.getItem(
+      "mizari_token"
+    );
+  },
+
+
+  async call(path, opt = {}) {
+
+    /*
+      اگر API واقعی فعال نشده باشد،
+      برنامه در حالت Demo کار می‌کند.
+    */
+
+    const apiUrl =
+      window.MIZARI_API;
+
+    if (
+      !apiUrl ||
+      apiUrl.includes("localhost")
+    ) {
+      return demoCall(
+        path,
+        opt
+      );
+    }
+
+
+    const headers = {
+      "Content-Type":
+        "application/json",
+
+      ...(opt.headers || {})
+    };
+
+
+    const token =
+      this.token();
+
+    if (token) {
+      headers.Authorization =
+        "Bearer " + token;
+    }
+
+
+    const response =
+      await fetch(
+        apiUrl + path,
+        {
+          ...opt,
+          headers
+        }
+      );
+
+
+    const data =
+      await response
+        .json()
+        .catch(() => ({}));
+
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+        "خطای سرور"
+      );
+    }
+
+
+    return data;
+  },
+
+
+  async otp(phone) {
+
+    if (
+      !window.MIZARI_API ||
+      window.MIZARI_API.includes(
+        "localhost"
+      )
+    ) {
+      localStorage.setItem(
+        "mizari_demo_phone",
+        phone
+      );
+
+      return {
+        demoCode: "123456"
+      };
+    }
+
+
+    return this.call(
+      "/auth/request-otp",
+      {
+        method: "POST",
+
+        body:
+          JSON.stringify({
+            phone
+          })
+      }
+    );
+  },
+
+
+  async verify(
+    phone,
+    code
+  ) {
+
+    if (
+      !window.MIZARI_API ||
+      window.MIZARI_API.includes(
+        "localhost"
+      )
+    ) {
+
+      if (
+        code !== "123456"
+      ) {
+        throw new Error(
+          "کد آزمایشی صحیح: 123456"
+        );
+      }
+
+
+      localStorage.setItem(
+        "mizari_demo_phone",
+        phone
+      );
+
+
+      localStorage.setItem(
+        "mizari_token",
+        "demo-token"
+      );
+
+
+      return {
+        token:
+          "demo-token",
+
+        user:
+          demoUser()
+      };
+    }
+
+
+    return this.call(
+      "/auth/verify-otp",
+      {
+        method: "POST",
+
+        body:
+          JSON.stringify({
+            phone,
+            code
+          })
+      }
+    );
+  },
+
+
+  me() {
+    return this.call(
+      "/me"
+    );
+  },
+
+
+  rides() {
+    return this.call(
+      "/rides"
+    );
+  }
+
 };
+```
