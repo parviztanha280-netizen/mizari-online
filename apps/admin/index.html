@@ -1,24 +1,170 @@
+```html
 <!doctype html>
-<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>میزاری آنلاین | مدیریت</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.webmanifest"></head>
-<body><main>
-<div class="header"><h2>👑 مرکز مدیریت</h2><button onclick="logout()">خروج</button></div>
-<div id="stats" class="grid"></div>
-<div class="card"><h3>رانندگان</h3><div id="drivers">...</div></div>
-<div class="card"><h3>سفرها</h3><div id="rides">...</div></div>
-<div class="card"><h3>شکایت‌ها</h3><div id="complaints">...</div></div>
-</main>
-<script src="config.js"></script><script src="api.js"></script>
-<script>
-if(!API.token())location.href="login.html"; const $=id=>document.getElementById(id);
-async function load(){try{
- let s=await API.call("/admin/stats"),d=await API.call("/admin/drivers"),c=await API.call("/admin/complaints"),r=await API.rides();
- $("stats").innerHTML=[["کاربران",s.users],["رانندگان",s.drivers],["آنلاین",s.onlineDrivers],["سفرها",s.rides],["فعال",s.activeRides],["شکایت باز",s.complaints]].map(x=>`<div class="stat">${x[0]}<b>${x[1]}</b></div>`).join("");
- $("drivers").innerHTML=d.drivers.map(x=>`<div class="status">#${x.id} ${x.phone}<br>${x.vehicle_model} | ${x.plate}<br>تأیید: ${x.verified?"بله":"خیر"} ${!x.verified?`<button onclick="verify(${x.id})">تأیید</button>`:""}</div>`).join("")||"نداریم";
- $("rides").innerHTML=r.rides.slice(0,30).map(x=>`<div class="status">#${x.id} | ${x.status} | ${Math.round(x.fare)} افغانی</div>`).join("")||"سفری نیست";
- $("complaints").innerHTML=c.complaints.map(x=>`<div class="status">#${x.id} | ${x.category}<br>${x.message}</div>`).join("")||"شکایتی نیست";
- }catch(e){alert(e.message)}}
-async function verify(id){await API.call("/drivers/verify/"+id,{method:"POST",body:JSON.stringify({verified:true})});load()}
-function logout(){localStorage.removeItem("mizari_token");location.href="login.html"}
-load();setInterval(load,5000);
-</script><script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body></html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>میزاری آنلاین | مدیریت</title>
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- تنظیمات API باید قبل از api.js بارگذاری شود -->
+  <script src="config.js"></script>
+</head>
+
+<body>
+
+  <main>
+
+    <div class="header">
+      <h2>👑 مرکز مدیریت</h2>
+      <button onclick="logout()">خروج</button>
+    </div>
+
+    <div id="stats" class="grid">
+      در حال بارگذاری...
+    </div>
+
+    <div class="card">
+      <h3>رانندگان</h3>
+      <div id="drivers">...</div>
+    </div>
+
+    <div class="card">
+      <h3>سفرها</h3>
+      <div id="rides">...</div>
+    </div>
+
+    <div class="card">
+      <h3>شکایت‌ها</h3>
+      <div id="complaints">...</div>
+    </div>
+
+  </main>
+
+  <!-- API -->
+  <script src="api.js"></script>
+
+  <script>
+    if (!API.token()) {
+      location.href = "login.html";
+    }
+
+    const $ = id => document.getElementById(id);
+
+    async function load() {
+      try {
+
+        const s = await API.call("/admin/stats");
+        const d = await API.call("/admin/drivers");
+        const c = await API.call("/admin/complaints");
+        const r = await API.rides();
+
+        $("stats").innerHTML = [
+          ["کاربران", s.users],
+          ["رانندگان", s.drivers],
+          ["آنلاین", s.onlineDrivers],
+          ["سفرها", s.rides],
+          ["فعال", s.activeRides],
+          ["شکایت باز", s.complaints]
+        ]
+        .map(x => `
+          <div class="stat">
+            ${x[0]}
+            <b>${x[1]}</b>
+          </div>
+        `)
+        .join("");
+
+        $("drivers").innerHTML =
+          d.drivers
+            .map(x => `
+              <div class="status">
+                #${x.id} ${x.phone}<br>
+                ${x.vehicle_model} | ${x.plate}<br>
+                تأیید:
+                ${x.verified ? "بله" : "خیر"}
+
+                ${
+                  !x.verified
+                    ? `<button onclick="verify(${x.id})">
+                        تأیید
+                       </button>`
+                    : ""
+                }
+              </div>
+            `)
+            .join("")
+          || "راننده‌ای نداریم";
+
+        $("rides").innerHTML =
+          r.rides
+            .slice(0, 30)
+            .map(x => `
+              <div class="status">
+                #${x.id} |
+                ${x.status} |
+                ${Math.round(x.fare)} افغانی
+              </div>
+            `)
+            .join("")
+          || "سفری نیست";
+
+        $("complaints").innerHTML =
+          c.complaints
+            .map(x => `
+              <div class="status">
+                #${x.id} |
+                ${x.category}<br>
+                ${x.message}
+              </div>
+            `)
+            .join("")
+          || "شکایتی نیست";
+
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function verify(id) {
+      try {
+        await API.call(
+          "/drivers/verify/" + id,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              verified: true
+            })
+          }
+        );
+
+        await load();
+
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("mizari_token");
+      location.href = "login.html";
+    }
+
+    load();
+
+    setInterval(load, 5000);
+  </script>
+
+  <!-- Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+  </script>
+
+</body>
+</html>
+```
