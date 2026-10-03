@@ -1,182 +1,849 @@
 <!doctype html>
+
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>میزاری آنلاین | مسافر</title>
+  <title>میزاری آنلاین</title>
 
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 
 <body>
-  <main>
 
-    <div class="header">
-      <h2>🚕 میزاری آنلاین</h2>
-      <button onclick="logout()">خروج</button>
-    </div>
+<header class="header">
+  <div>
+    <strong>🚕 میزاری آنلاین</strong>
+    <small id="roleText"></small>
+  </div>
 
-    <div class="card">
-      <h3>درخواست سفر</h3>
+<button id="logout">خروج</button>
 
-      <input id="origin" placeholder="📍 مبدا">
-      <input id="destination" placeholder="🏁 مقصد">
+</header>
 
-      <div id="map" style="height:320px;border-radius:14px;margin:10px 0"></div>
+<main class="container">
 
-      <input id="distance" type="number" min="0" step=".1" placeholder="مسافت (کیلومتر)">
-      <input id="duration" type="number" min="0" placeholder="زمان تقریبی (دقیقه)">
+  <!-- ==================== مسافر ==================== -->
 
-      <select id="payment">
-        <option value="cash">💵 نقدی</option>
-        <option value="wallet">💳 کیف پول</option>
-      </select>
+  <section id="passengerPanel" class="panel">
 
-      <button onclick="requestRide()">درخواست موتر</button>
-      <p id="msg"></p>
-    </div>
+```
+<h2>🚕 درخواست سفر</h2>
 
-    <div class="card">
-      <h3>وضعیت سفر جاری</h3>
-      <div id="active">سفری ندارید.</div>
-    </div>
+<div class="card">
 
-    <div class="card">
-      <h3>تاریخچه</h3>
-      <div id="history">...</div>
-    </div>
+  <label>مبدأ</label>
+  <input id="origin" placeholder="مثلاً میدان آزادی">
 
-    <div class="card">
-      <h3>پشتیبانی</h3>
-      <textarea id="complaint" placeholder="مشکل خود را بنویسید"></textarea>
-      <button onclick="sendComplaint()">ارسال</button>
-    </div>
+  <label>مقصد</label>
+  <input id="destination" placeholder="مثلاً مرکز شهر">
 
-  </main>
+  <label>مسافت تقریبی (کیلومتر)</label>
+  <input id="distance" type="number" value="5" min="1">
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="config.js"></script>
-  <script src="api.js"></script>
-  <script src="realtime.js"></script>
-  <script src="map.js"></script>
+  <label>روش پرداخت</label>
+  <select id="payment">
+    <option value="cash">نقدی</option>
+    <option value="online">آنلاین</option>
+  </select>
 
-  <script>
-    if (!API.token()) {
-      location.href = "login.html";
-    }
+  <button id="requestRide">🚕 درخواست سفر</button>
 
-    window.addEventListener("load", () => {
-      if (window.MIZARI_MAP && MIZARI_MAP.init) {
-        MIZARI_MAP.init();
-      }
-    });
+  <p id="passengerMsg"></p>
 
-    const $ = id => document.getElementById(id);
-    let current = null;
+</div>
 
-    async function requestRide() {
-      try {
-        const d = await API.call("/rides", {
-          method: "POST",
-          body: JSON.stringify({
-            originText: $("origin").value,
-            destinationText: $("destination").value,
-            distanceKm: Number($("distance").value || 0),
-            durationMin: Number($("duration").value || 0),
-            paymentMethod: $("payment").value
-          })
-        });
+<h3>سفرهای من</h3>
 
-        current = d.ride;
-        renderCurrent();
-        load();
+<div id="passengerRides"></div>
+```
 
-      } catch (e) {
-        $("msg").textContent = e.message;
-      }
-    }
+  </section>
 
-    function renderCurrent() {
-      if (!current) {
-        $("active").textContent = "سفری ندارید.";
+  <!-- ==================== راننده ==================== -->
+
+  <section id="driverPanel" class="panel hidden">
+
+```
+<h2>🏍️ پنل راننده</h2>
+
+<div class="card">
+
+  <p>
+    وضعیت تأیید:
+    <strong id="driverVerified">در حال بررسی</strong>
+  </p>
+
+  <p>
+    وضعیت آنلاین:
+    <strong id="driverOnline">آفلاین</strong>
+  </p>
+
+  <button id="onlineBtn">
+    آنلاین شدن
+  </button>
+
+  <p id="driverMsg"></p>
+
+</div>
+
+<div class="card">
+
+  <h3>💰 درآمد</h3>
+
+  <div class="stat">
+    <strong id="earnings">0</strong>
+    <span>افغانی</span>
+  </div>
+
+</div>
+
+<h3>🚕 سفرهای موجود</h3>
+
+<div id="driverRides"></div>
+```
+
+  </section>
+
+  <!-- ==================== مدیریت ==================== -->
+
+  <section id="adminPanel" class="panel hidden">
+
+```
+<h2>⚙️ پنل مدیریت</h2>
+
+<div class="grid">
+
+  <div class="stat">
+    <strong id="users">0</strong>
+    <span>کاربران</span>
+  </div>
+
+  <div class="stat">
+    <strong id="drivers">0</strong>
+    <span>رانندگان</span>
+  </div>
+
+  <div class="stat">
+    <strong id="onlineDrivers">0</strong>
+    <span>رانندگان آنلاین</span>
+  </div>
+
+  <div class="stat">
+    <strong id="ridesCount">0</strong>
+    <span>سفرها</span>
+  </div>
+
+  <div class="stat">
+    <strong id="activeRides">0</strong>
+    <span>سفرهای فعال</span>
+  </div>
+
+  <div class="stat">
+    <strong id="complaints">0</strong>
+    <span>شکایت‌ها</span>
+  </div>
+
+</div>
+
+
+<div class="card">
+
+  <h3>🏍️ مدیریت رانندگان</h3>
+
+  <div id="adminDrivers"></div>
+
+</div>
+
+
+<div class="card">
+
+  <h3>🚕 سفرها</h3>
+
+  <div id="adminRides"></div>
+
+</div>
+
+
+<div class="card">
+
+  <h3>📢 شکایت‌ها</h3>
+
+  <div id="adminComplaints"></div>
+
+</div>
+```
+
+  </section>
+
+</main>
+
+<script src="config.js"></script>
+
+<script src="api.js"></script>
+
+<script>
+
+const $ = id =>
+  document.getElementById(id);
+
+
+function escapeHtml(value) {
+
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+}
+
+
+function show(id) {
+
+  $(id).classList.remove("hidden");
+
+}
+
+
+function hide(id) {
+
+  $(id).classList.add("hidden");
+
+}
+
+
+async function getRole() {
+
+  const user = await API.me();
+
+  return user.user?.role || "passenger";
+
+}
+
+
+function statusText(status) {
+
+  const map = {
+
+    searching: "در حال جستجوی راننده",
+
+    driver_assigned: "راننده پیدا شد",
+
+    started: "سفر شروع شده",
+
+    completed: "تکمیل شده",
+
+    cancelled: "لغو شده"
+
+  };
+
+  return map[status] || status;
+
+}
+
+
+/* ==================== خروج ==================== */
+
+$("logout").onclick = () => {
+
+  localStorage.removeItem("mizari_token");
+
+  location.href = "login.html";
+
+};
+
+
+/* ==================== مسافر ==================== */
+
+async function loadPassenger() {
+
+  const data = await API.rides();
+
+  const rides =
+    data.rides || [];
+
+  const box =
+    $("passengerRides");
+
+  if (!rides.length) {
+
+    box.innerHTML =
+      "<p>هنوز سفری ثبت نشده است.</p>";
+
+    return;
+
+  }
+
+  box.innerHTML =
+    rides.map(ride => `
+
+      <div class="card">
+
+        <strong>
+          سفر شماره ${ride.id}
+        </strong>
+
+        <p>
+          ${escapeHtml(ride.origin_text)}
+          ←
+          ${escapeHtml(ride.destination_text)}
+        </p>
+
+        <p>
+          کرایه:
+          ${ride.fare || 0}
+          افغانی
+        </p>
+
+        <p>
+          وضعیت:
+          ${statusText(ride.status)}
+        </p>
+
+      </div>
+
+    `).join("");
+
+}
+
+
+$("requestRide").onclick =
+  async () => {
+
+    try {
+
+      const origin =
+        $("origin").value.trim();
+
+      const destination =
+        $("destination").value.trim();
+
+      const distance =
+        Number($("distance").value || 5);
+
+      const payment =
+        $("payment").value;
+
+      if (!origin || !destination) {
+
+        $("passengerMsg").textContent =
+          "لطفاً مبدأ و مقصد را وارد کنید.";
+
         return;
+
       }
 
-      $("active").innerHTML = `
-        <div class="status">
-          <b>سفر #${current.id}</b><br>
-          ${current.origin_text} ← ${current.destination_text}<br>
-          وضعیت: ${current.status}<br>
-          کرایه: ${Math.round(current.fare)} افغانی
-        </div>
-      `;
+      const result =
+        await API.call(
+          "/rides",
+          {
+            method: "POST",
+
+            body: JSON.stringify({
+
+              originText: origin,
+
+              destinationText:
+                destination,
+
+              distanceKm:
+                distance,
+
+              durationMin:
+                Math.max(
+                  5,
+                  Math.round(distance * 3)
+                ),
+
+              paymentMethod:
+                payment
+
+            })
+
+          }
+        );
+
+      $("passengerMsg").textContent =
+        "✅ سفر با موفقیت ثبت شد.";
+
+      $("origin").value = "";
+
+      $("destination").value = "";
+
+      await loadPassenger();
+
+    } catch (error) {
+
+      $("passengerMsg").textContent =
+        error.message;
+
     }
 
-    async function load() {
-      try {
-        const d = await API.rides();
+  };
 
-        $("history").innerHTML =
-          d.rides.map(r => `
-            <div class="status">
-              #${r.id} | ${r.status} | ${Math.round(r.fare)} افغانی<br>
-              ${r.origin_text} ← ${r.destination_text}
-            </div>
-          `).join("") || "سابقه‌ای ندارید";
 
-        if (current) {
-          const x = await API.call("/rides/" + current.id);
-          current = x.ride;
-          renderCurrent();
+/* ==================== راننده ==================== */
+
+async function loadDriver() {
+
+  const data =
+    await API.call(
+      "/admin/drivers"
+    );
+
+  const driver =
+    data.drivers?.[0];
+
+  if (!driver) return;
+
+  $("driverVerified").textContent =
+    driver.verified
+      ? "✅ تأیید شده"
+      : "❌ تأیید نشده";
+
+  $("onlineBtn").disabled =
+    !driver.verified;
+
+  $("onlineBtn").textContent =
+    driver.verified
+      ? "تغییر وضعیت آنلاین"
+      : "منتظر تأیید مدیریت";
+
+  const earnings =
+    await API.call(
+      "/drivers/earnings"
+    );
+
+  $("earnings").textContent =
+    earnings.earnings || 0;
+
+
+  const rides =
+    await API.rides();
+
+  const list =
+    rides.rides || [];
+
+  const box =
+    $("driverRides");
+
+  if (!list.length) {
+
+    box.innerHTML =
+      "<p>فعلاً سفری وجود ندارد.</p>";
+
+    return;
+
+  }
+
+  box.innerHTML =
+    list.map(ride => `
+
+      <div class="card">
+
+        <strong>
+          سفر شماره ${ride.id}
+        </strong>
+
+        <p>
+          ${escapeHtml(ride.origin_text)}
+          ←
+          ${escapeHtml(ride.destination_text)}
+        </p>
+
+        <p>
+          کرایه:
+          ${ride.fare || 0}
+          افغانی
+        </p>
+
+        <p>
+          وضعیت:
+          ${statusText(ride.status)}
+        </p>
+
+        ${
+          ride.status === "searching"
+          ?
+          `<button onclick="acceptRide(${ride.id})">
+             قبول سفر
+           </button>`
+          :
+          ""
         }
 
-      } catch (e) {
+        ${
+          ride.status === "driver_assigned"
+          ?
+          `<button onclick="completeRide(${ride.id})">
+             تکمیل سفر
+           </button>`
+          :
+          ""
+        }
+
+      </div>
+
+    `).join("");
+
+}
+
+
+$("onlineBtn").onclick =
+  async () => {
+
+    try {
+
+      const data =
+        await API.call(
+          "/drivers/status",
+          {
+            method: "POST",
+
+            body: JSON.stringify({
+
+              online:
+                $("driverOnline").textContent
+                  === "آفلاین"
+
+            })
+
+          }
+        );
+
+      const online =
+        data.driver?.online;
+
+      $("driverOnline").textContent =
+        online
+          ? "آنلاین 🟢"
+          : "آفلاین";
+
+      $("driverMsg").textContent =
+        online
+          ? "✅ شما آنلاین شدید."
+          : "شما آفلاین شدید.";
+
+    } catch (error) {
+
+      $("driverMsg").textContent =
+        error.message;
+
+    }
+
+  };
+
+
+async function acceptRide(id) {
+
+  try {
+
+    await API.call(
+      "/rides/" + id + "/accept",
+      {
+        method: "POST"
       }
-    }
+    );
 
-    async function sendComplaint() {
-      try {
-        await API.call("/complaints", {
-          method: "POST",
-          body: JSON.stringify({
-            category: "support",
-            message: $("complaint").value
-          })
-        });
+    await loadDriver();
 
-        $("complaint").value = "";
-        alert("درخواست ثبت شد");
+  } catch (error) {
 
-      } catch (e) {
-        alert(e.message);
+    alert(error.message);
+
+  }
+
+}
+
+
+async function completeRide(id) {
+
+  try {
+
+    await API.call(
+      "/rides/" + id + "/status",
+      {
+        method: "POST",
+
+        body: JSON.stringify({
+          status: "completed"
+        })
+
       }
+    );
+
+    await loadDriver();
+
+  } catch (error) {
+
+    alert(error.message);
+
+  }
+
+}
+
+
+/* ==================== مدیریت ==================== */
+
+async function loadAdmin() {
+
+  const stats =
+    await API.call(
+      "/admin/stats"
+    );
+
+  $("users").textContent =
+    stats.users || 0;
+
+  $("drivers").textContent =
+    stats.drivers || 0;
+
+  $("onlineDrivers").textContent =
+    stats.onlineDrivers || 0;
+
+  $("ridesCount").textContent =
+    stats.rides || 0;
+
+  $("activeRides").textContent =
+    stats.activeRides || 0;
+
+  $("complaints").textContent =
+    stats.complaints || 0;
+
+
+  const drivers =
+    await API.call(
+      "/admin/drivers"
+    );
+
+  $("adminDrivers").innerHTML =
+    (drivers.drivers || [])
+      .map(driver => `
+
+        <div class="card">
+
+          <strong>
+            🏍️ ${escapeHtml(
+              driver.vehicle_model ||
+              "وسیله نقلیه"
+            )}
+          </strong>
+
+          <p>
+            شماره:
+            ${escapeHtml(
+              driver.phone
+            )}
+          </p>
+
+          <p>
+            پلاک:
+            ${escapeHtml(
+              driver.plate
+            )}
+          </p>
+
+          <p>
+            وضعیت:
+            ${
+              driver.verified
+              ? "✅ تأیید شده"
+              : "❌ تأیید نشده"
+            }
+          </p>
+
+          ${
+            !driver.verified
+            ?
+            `<button onclick="verifyDriver(${driver.id})">
+               تأیید راننده
+             </button>`
+            :
+            "<p>راننده تأیید شده است.</p>"
+          }
+
+        </div>
+
+      `).join("");
+
+
+  const rides =
+    await API.rides();
+
+  $("adminRides").innerHTML =
+    (rides.rides || [])
+      .map(ride => `
+
+        <div class="card">
+
+          <strong>
+            سفر #${ride.id}
+          </strong>
+
+          <p>
+            ${escapeHtml(
+              ride.origin_text
+            )}
+            ←
+            ${escapeHtml(
+              ride.destination_text
+            )}
+          </p>
+
+          <p>
+            کرایه:
+            ${ride.fare || 0}
+            افغانی
+          </p>
+
+          <p>
+            وضعیت:
+            ${statusText(ride.status)}
+          </p>
+
+        </div>
+
+      `).join("") ||
+    "<p>سفری ثبت نشده است.</p>";
+
+
+  const complaints =
+    await API.call(
+      "/admin/complaints"
+    );
+
+  $("adminComplaints").innerHTML =
+    (complaints.complaints || [])
+      .map(item => `
+
+        <div class="card">
+
+          <strong>
+            شکایت #${item.id}
+          </strong>
+
+          <p>
+            ${escapeHtml(
+              item.message
+            )}
+          </p>
+
+        </div>
+
+      `).join("") ||
+    "<p>شکایتی ثبت نشده است.</p>";
+
+}
+
+
+async function verifyDriver(id) {
+
+  try {
+
+    await API.call(
+      "/drivers/verify/" + id,
+      {
+        method: "POST"
+      }
+    );
+
+    alert(
+      "✅ راننده با موفقیت تأیید شد."
+    );
+
+    await loadAdmin();
+
+  } catch (error) {
+
+    alert(error.message);
+
+  }
+
+}
+
+
+/* ==================== شروع ==================== */
+
+async function startApp() {
+
+  if (!API.token()) {
+
+    location.href =
+      "login.html";
+
+    return;
+
+  }
+
+  try {
+
+    const role =
+      await getRole();
+
+    hide("passengerPanel");
+    hide("driverPanel");
+    hide("adminPanel");
+
+    if (role === "admin") {
+
+      $("roleText").textContent =
+        "مدیریت";
+
+      show("adminPanel");
+
+      await loadAdmin();
+
     }
 
-    function logout() {
-      localStorage.removeItem("mizari_token");
-      location.href = "login.html";
+    else if (role === "driver") {
+
+      $("roleText").textContent =
+        "راننده";
+
+      show("driverPanel");
+
+      await loadDriver();
+
     }
 
-    load();
+    else {
 
-    if (typeof enableRealtime === "function") {
-      enableRealtime();
+      $("roleText").textContent =
+        "مسافر";
+
+      show("passengerPanel");
+
+      await loadPassenger();
+
     }
 
-    if (typeof enablePush === "function") {
-      enablePush();
-    }
+  } catch (error) {
 
-    setInterval(load, 5000);
-  </script>
+    console.error(error);
 
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js");
-    }
-  </script>
+    $("passengerMsg").textContent =
+      error.message;
+
+  }
+
+}
+
+
+startApp();
+
+
+if ("serviceWorker" in navigator) {
+
+  navigator.serviceWorker.register(
+    "sw.js"
+  );
+
+}
+
+</script>
 
 </body>
 </html>
