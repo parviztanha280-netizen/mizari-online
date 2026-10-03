@@ -1,1 +1,2 @@
-window.MIZARI_API="http://localhost:3000/api";
+// Mizari API Configuration
+window.MIZARI_API = "http://localhost:3000/api";
